@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  STUDENT
+  UNIVERSITY_ADMIN
+  ADMIN
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  EXAM
+  INTERVIEW
+  ACCEPTED
+  REJECTED
+}
+
+enum DegreeLevel {
+  HIGH_SCHOOL
+  UNDERGRADUATE
+  MASTERS
+  PHD
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  password     String
+  role         Role          @default(STUDENT)
+  emailVerified Boolean      @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  profile      StudentProfile?
+  applications Application[]
+  payments     Payment[]
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StudentProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  nationality      String?
+  dateOfBirth      DateTime?
+  phone            String?
+  bio              String?
+  targetCountry    String?
+  targetDegree     DegreeLevel?
+  fieldOfStudy     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents        Document[]
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  profileId String
+  name      String
+  type      String   // passport, transcript, certificate, cv
+  url       String
+  createdAt DateTime @default(now())
+  profile   StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model University {
+  id           String        @id @default(cuid())
+  name         String
+  country      String
+  city         String?
+  description  String?
+  website      String?
+  logoUrl      String?
+  createdAt    DateTime      @default(now())
+  scholarships Scholarship[]
+}
+
+model Scholarship {
+  id           String        @id @default(cuid())
+  title        String
+  description  String?
+  universityId String
+  degreeLevel  DegreeLevel
+  country      String
+  fieldOfStudy String?
+  amount       Float?
+  currency     String?       @default("USD")
+  deadline     DateTime
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  university   University    @relation(fields: [universityId], references: [id])
+  applications Application[]
+}
+
+model Application {
+  id            String            @id @default(cuid())
+  studentId     String
+  scholarshipId String
+  status        ApplicationStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  student       User              @relation(fields: [studentId], references: [id])
+  scholarship   Scholarship       @relation(fields: [scholarshipId], references: [id])
+  payment       Payment?
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  studentId       String
+  applicationId   String?       @unique
+  amount          Float
+  currency        String        @default("USD")
+  status          PaymentStatus @default(PENDING)
+  paymentProvider String        @default("seerbit")
+  reference       String?       @unique
+  createdAt       DateTime      @default(now())
+  student         User          @relation(fields: [studentId], references: [id])
+  application     Application?  @relation(fields: [applicationId], references: [id])
+}
